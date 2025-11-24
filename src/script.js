@@ -1,3 +1,7 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+
 class ARObjectPlacement {
     constructor() {
         this.canvas = null;
@@ -31,7 +35,7 @@ class ARObjectPlacement {
         this.fpvOriginalPosition = new THREE.Vector3();
         this.fpvOriginalRotation = new THREE.Euler();
         this.fpvTargetScale = 20; // Multiplier untuk scale 1:1
-        this.baseMovementSpeed = 0.1; // Base speed dalam meter
+        this.baseMovementSpeed = 0.05; // Base speed disesuaikan untuk skala AR
         this.movementSpeedMultiplier = 1;
         
         // FPV Collision Detection Properties
@@ -77,7 +81,7 @@ class ARObjectPlacement {
         const startButton = document.getElementById('startButton');
         
         if (!navigator.xr) {
-            statusEl.innerHTML = 'WebXR tidak tersedia di browser ini';
+            statusEl.innerHTML = 'WebXR tidak tersedia. Buka di Chrome Android.';
             startButton.textContent = 'WebXR Tidak Tersedia';
             return;
         }
@@ -103,62 +107,39 @@ class ARObjectPlacement {
         const startButton = document.getElementById('startButton');
 
         try {
-            const loader = new THREE.GLTFLoader();
+            const loader = new GLTFLoader();
 
             this.reticle = null;
             let reticleLoaded = false;
-            try {
-                const reticleGltf = await this.loadGLTF(loader, 'https://immersive-web.github.io/webxr-samples/media/gltf/reticle/reticle.gltf');
-                this.reticle = reticleGltf.scene;
-                reticleLoaded = true;
-                console.log('External reticle loaded successfully');
-            } catch (reticleError) {
-                console.warn('Failed to load external reticle, creating fallback:', reticleError);
-
-                // Create a simple ring geometry as fallback
-                const ringGeometry = new THREE.RingGeometry(0.3, 0.4, 32);
-                const ringMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x007bff,
-                    transparent: true,
-                    opacity: 0.8,
-                    side: THREE.DoubleSide
-                });
-                this.reticle = new THREE.Mesh(ringGeometry, ringMaterial);
-                reticleLoaded = true;
-                console.log('Fallback reticle created');
-            }
-
-            if (!reticleLoaded || !this.reticle) {
-                throw new Error('Failed to load reticle');
-            }
-
-            this.reticle.visible = false;
             
-            // Ensure reticle materials are properly set
-            this.reticle.traverse((child) => {
-                if (child.isMesh) {
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(mat => {
-                                if (mat.transparent) {
-                                    mat.opacity = 1.0;
-                                }
-                            });
-                        } else {
-                            if (child.material.transparent) {
-                                child.material.opacity = 1.0;
-                            }
-                        }
-                    }
-                }
-            });
+            // Fallback reticle logic
+            try {
+                // Gunakan ring geometry sederhana agar lebih ringan dan pasti load
+                const ringGeometry = new THREE.RingGeometry(0.1, 0.11, 32).rotateX(-Math.PI / 2);
+                const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                this.reticle = new THREE.Mesh(ringGeometry, ringMaterial);
+                
+                // Opsional: Load reticle GLTF eksternal jika diinginkan
+                // const reticleGltf = await this.loadGLTF(loader, 'https://immersive-web.github.io/webxr-samples/media/gltf/reticle/reticle.gltf');
+                // this.reticle = reticleGltf.scene;
+                
+                reticleLoaded = true;
+                console.log('Reticle created');
+            } catch (reticleError) {
+                console.warn('Failed to create reticle:', reticleError);
+            }
+
+            if (!this.reticle) throw new Error('Failed to load reticle');
+            this.reticle.visible = false;
+            this.reticle.matrixAutoUpdate = false;
 
             // Define available models (GLB)
+            // UPDATE: Menghapus 'public/' karena Vite serve root dari folder public
             this.availableModels = [
-                { name: 'Tower House', url: 'tower_house_design.glb' },
-                { name: 'Kitchen', url: 'interior-fix2.glb' },
-                { name: 'Astronaut', url: 'Astronaut.glb' },
-                { name: '3 Bedroom House', url: '3_bedroom_house.glb' }
+                { name: 'Tower House', url: '/tower_house_design.glb' },
+                { name: 'Kitchen', url: '/interior-fix2.glb' },
+                { name: 'Astronaut', url: '/Astronaut.glb' },
+                { name: '3 Bedroom House', url: '/3_bedroom_house.glb' }
             ];
 
             // Load the first model
@@ -168,12 +149,9 @@ class ARObjectPlacement {
             startButton.textContent = 'Mulai AR';
             startButton.disabled = false;
 
-            console.log('Models loaded successfully');
-
         } catch (error) {
             console.error('Error loading models:', error);
             statusEl.innerHTML = 'Gagal memuat model: ' + error.message;
-            startButton.textContent = 'Error Memuat Model';
         }
     }
 
@@ -182,7 +160,6 @@ class ARObjectPlacement {
             const objectGltf = await this.loadGLTF(loader, modelUrl);
             this.arObject = objectGltf.scene;
 
-            // Setup shadows for GLTF
             this.arObject.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -208,20 +185,18 @@ class ARObjectPlacement {
 
         statusEl.innerHTML = 'Memuat file FBX...';
         
-        // Loader khusus FBX
-        const loader = new THREE.FBXLoader();
+        const loader = new FBXLoader();
         
         loader.load(url, (object) => {
             // Skala awal FBX seringkali besar (cm), ubah ke meter (0.01)
             object.scale.set(0.01, 0.01, 0.01); 
 
-            // Perbaiki material
             object.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
                     if (child.material) {
-                        child.material.side = THREE.DoubleSide; // Agar terlihat dari luar & dalam
+                        child.material.side = THREE.DoubleSide; 
                     }
                 }
             });
@@ -232,9 +207,7 @@ class ARObjectPlacement {
             console.log('FBX Loaded from file');
             statusEl.innerHTML = 'File FBX siap! Ketuk layar untuk menempatkan.';
             
-            // Tambahkan opsi dummy ke dropdown agar UI konsisten
             const modelSelect = document.getElementById('modelSelect');
-            // Cek jika opsi custom sudah ada, jika belum buat baru
             let customOption = modelSelect.querySelector('option[value="custom_upload"]');
             if (!customOption) {
                 customOption = document.createElement('option');
@@ -270,7 +243,6 @@ class ARObjectPlacement {
         const modelSelect = document.getElementById('modelSelect');
         const controlsContainer = document.getElementById('controls');
         
-        // Listener baru untuk file upload
         const fileUpload = document.getElementById('fileUpload');
         if (fileUpload) {
             fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
@@ -278,16 +250,13 @@ class ARObjectPlacement {
 
         startButton.addEventListener('click', () => this.startAR());
 
-        // Model selector event
         modelSelect.addEventListener('change', (e) => {
-            if (e.target.value === "custom_upload") return; // Jangan reload jika user pilih opsi upload
+            if (e.target.value === "custom_upload") return; 
 
             const selectedModel = this.availableModels.find(model => model.url === e.target.value);
             if (selectedModel && this.arObject) {
-                this.loadSpecificModel(new THREE.GLTFLoader(), selectedModel.url)
-                    .then(() => {
-                        console.log(`Switched to model: ${selectedModel.name}`);
-                    })
+                this.loadSpecificModel(new GLTFLoader(), selectedModel.url)
+                    .then(() => console.log(`Switched to model: ${selectedModel.name}`))
                     .catch(error => {
                         console.error('Failed to load selected model:', error);
                         alert('Gagal memuat model yang dipilih');
@@ -295,72 +264,54 @@ class ARObjectPlacement {
             }
         });
         
-        // Controls container events
-        controlsContainer.addEventListener('touchstart', (e) => {
+        // Helper untuk mencegah klik tembus ke canvas saat interaksi UI
+        const preventCanvasClick = (e) => {
             this.isInteractingWithUI = true;
             this.lastUIInteraction = Date.now();
             e.stopPropagation();
-        });
-        controlsContainer.addEventListener('touchend', () => {
+        };
+        const resetCanvasClick = () => {
             this.lastUIInteraction = Date.now();
             setTimeout(() => { this.isInteractingWithUI = false; }, 500);
-        });
-        controlsContainer.addEventListener('click', (e) => {
-            this.lastUIInteraction = Date.now();
-            e.stopPropagation();
+        };
+
+        // Terapkan ke container kontrol
+        [controlsContainer].forEach(el => {
+            if(el) {
+                el.addEventListener('touchstart', preventCanvasClick);
+                el.addEventListener('touchend', resetCanvasClick);
+                el.addEventListener('click', preventCanvasClick);
+            }
         });
         
-        // Button events
-        resetButton.addEventListener('click', () => {
-            this.resetObjects();
-            this.lastUIInteraction = Date.now();
-        });
-        
-        exitButton.addEventListener('click', () => {
-            this.exitAR();
-            this.lastUIInteraction = Date.now();
-        });
+        resetButton.addEventListener('click', () => { this.resetObjects(); resetCanvasClick(); });
+        exitButton.addEventListener('click', () => { this.exitAR(); resetCanvasClick(); });
+        deleteButton.addEventListener('click', () => { this.deleteSelectedObject(); resetCanvasClick(); });
+        deselectButton.addEventListener('click', () => { this.deselectObject(); resetCanvasClick(); });
+        fpvButton.addEventListener('click', () => { this.enterFPVMode(); resetCanvasClick(); });
 
-        deleteButton.addEventListener('click', () => {
-            this.deleteSelectedObject();
-            this.lastUIInteraction = Date.now();
-        });
-
-        deselectButton.addEventListener('click', () => {
-            this.deselectObject();
-            this.lastUIInteraction = Date.now();
-        });
-
-        fpvButton.addEventListener('click', () => {
-            this.enterFPVMode();
-            this.lastUIInteraction = Date.now();
-        });
-
-        // Slider events
         this.setupSliderEvents(scaleSlider, 'scale');
         this.setupSliderEvents(rotateSlider, 'rotate');
 
-        // FPV Controls
         this.setupFPVControls();
     }
 
     setupSliderEvents(slider, type) {
-        slider.addEventListener('touchstart', () => {
+        if(!slider) return;
+        
+        const start = () => {
             this.isInteractingWithUI = true;
             this.lastUIInteraction = Date.now();
-        });
-        slider.addEventListener('touchend', () => {
+        };
+        const end = () => {
             this.lastUIInteraction = Date.now();
             setTimeout(() => { this.isInteractingWithUI = false; }, 500);
-        });
-        slider.addEventListener('mousedown', () => {
-            this.isInteractingWithUI = true;
-            this.lastUIInteraction = Date.now();
-        });
-        slider.addEventListener('mouseup', () => {
-            this.lastUIInteraction = Date.now();
-            setTimeout(() => { this.isInteractingWithUI = false; }, 500);
-        });
+        };
+
+        slider.addEventListener('touchstart', start);
+        slider.addEventListener('touchend', end);
+        slider.addEventListener('mousedown', start);
+        slider.addEventListener('mouseup', end);
         
         if (type === 'scale') {
             slider.addEventListener('input', (e) => this.onScaleChange(e.target.value));
@@ -374,18 +325,18 @@ class ARObjectPlacement {
         const fpvExitButton = document.getElementById('fpvExitButton');
         const speedSlider = document.getElementById('speedSlider');
         
-        // Prevent touch events from propagating
-        fpvControlsContainer.addEventListener('touchstart', (e) => {
-            this.isInteractingWithUI = true;
-            this.lastUIInteraction = Date.now();
-            e.stopPropagation();
-        });
-        fpvControlsContainer.addEventListener('touchend', () => {
-            this.lastUIInteraction = Date.now();
-            setTimeout(() => { this.isInteractingWithUI = false; }, 500);
-        });
+        if (fpvControlsContainer) {
+            fpvControlsContainer.addEventListener('touchstart', (e) => {
+                this.isInteractingWithUI = true;
+                this.lastUIInteraction = Date.now();
+                e.stopPropagation();
+            });
+            fpvControlsContainer.addEventListener('touchend', () => {
+                this.lastUIInteraction = Date.now();
+                setTimeout(() => { this.isInteractingWithUI = false; }, 500);
+            });
+        }
 
-        // Movement buttons
         this.setupMovementButton('forwardButton', 'forward');
         this.setupMovementButton('backwardButton', 'backward');
         this.setupMovementButton('leftButton', 'left');
@@ -393,64 +344,57 @@ class ARObjectPlacement {
         this.setupMovementButton('moveUpButton', 'up');
         this.setupMovementButton('moveDownButton', 'down');
 
-        // Speed control
-        speedSlider.addEventListener('input', (e) => {
-            this.movementSpeedMultiplier = parseFloat(e.target.value);
-            document.getElementById('speedValue').textContent = this.movementSpeedMultiplier + 'x';
-        });
+        if (speedSlider) {
+            speedSlider.addEventListener('input', (e) => {
+                this.movementSpeedMultiplier = parseFloat(e.target.value);
+                const valEl = document.getElementById('speedValue');
+                if(valEl) valEl.textContent = this.movementSpeedMultiplier + 'x';
+            });
+        }
 
-        // Exit FPV
-        fpvExitButton.addEventListener('click', () => {
-            this.exitFPVMode();
-            this.lastUIInteraction = Date.now();
-        });
+        if (fpvExitButton) {
+            fpvExitButton.addEventListener('click', () => {
+                this.exitFPVMode();
+                this.lastUIInteraction = Date.now();
+            });
+        }
     }
 
     setupMovementButton(buttonId, direction) {
         const button = document.getElementById(buttonId);
+        if (!button) return;
         
-        button.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        const startMove = (e) => {
+            if(e.cancelable) e.preventDefault();
             this.movementState[direction] = true;
             this.lastUIInteraction = Date.now();
-        });
+        };
         
-        button.addEventListener('touchend', (e) => {
-            e.preventDefault();
+        const endMove = (e) => {
+            if(e.cancelable) e.preventDefault();
             this.movementState[direction] = false;
             this.lastUIInteraction = Date.now();
-        });
+        };
 
-        button.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            this.movementState[direction] = true;
-            this.lastUIInteraction = Date.now();
-        });
-        
-        button.addEventListener('mouseup', (e) => {
-            e.preventDefault();
-            this.movementState[direction] = false;
-            this.lastUIInteraction = Date.now();
-        });
-
-        button.addEventListener('mouseleave', () => {
-            this.movementState[direction] = false;
-        });
+        button.addEventListener('touchstart', startMove, {passive: false});
+        button.addEventListener('touchend', endMove);
+        button.addEventListener('mousedown', startMove);
+        button.addEventListener('mouseup', endMove);
+        button.addEventListener('mouseleave', endMove);
     }
     
     async startAR() {
         try {
             this.canvas = document.createElement("canvas");
             document.body.appendChild(this.canvas);
+            
             this.gl = this.canvas.getContext("webgl", {
                 xrCompatible: true,
                 alpha: true,
                 antialias: true
             });
             
-            if (!this.gl) {
-                throw new Error("WebGL not supported");
-            }
+            if (!this.gl) throw new Error("WebGL not supported");
             
             this.scene = new THREE.Scene();
             
@@ -465,6 +409,7 @@ class ARObjectPlacement {
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             this.scene.add(ambientLight);
             
+            // Hemisphere light for better outdoor feel
             const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
             hemiLight.position.set(0, 20, 0);
             this.scene.add(hemiLight);
@@ -480,8 +425,9 @@ class ARObjectPlacement {
                 antialias: true
             });
             this.renderer.autoClear = false;
-            this.renderer.outputEncoding = THREE.sRGBEncoding;
-            this.renderer.physicallyCorrectLights = true;
+            
+            // UPDATE: Modern Color Space
+            this.renderer.outputColorSpace = THREE.SRGBColorSpace;
             this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
             this.renderer.toneMappingExposure = 1.0;
             
@@ -504,7 +450,6 @@ class ARObjectPlacement {
             this.hitTestSource = await this.session.requestHitTestSource({
                 space: this.viewerSpace
             });
-            console.log('Hit test source created:', this.hitTestSource);
             
             this.session.addEventListener('end', () => this.onSessionEnded());
             this.session.addEventListener('select', (event) => this.onSelect(event));
@@ -545,7 +490,6 @@ class ARObjectPlacement {
                 const viewport = this.session.renderState.baseLayer.getViewport(view);
                 this.renderer.setSize(viewport.width, viewport.height);
                 
-                // Always use XR camera matrix
                 this.camera.matrix.fromArray(view.transform.matrix);
                 this.camera.projectionMatrix.fromArray(view.projectionMatrix);
                 this.camera.updateMatrixWorld(true);
@@ -605,18 +549,10 @@ class ARObjectPlacement {
 
         // Apply adjusted movement to the FPV object
         this.fpvObject.position.add(adjustedMovement);
-
-        // Debug log
-        if (adjustedMovement.length() > 0) { // Log only if actual movement occurred
-            console.log('Moving object:', adjustedMovement, 'New position:', this.fpvObject.position);
-        }
     }
     
     handleHitTest(frame) {
-        if (!this.hitTestSource || !this.reticle) {
-            console.log('Hit test source or reticle not available');
-            return;
-        }
+        if (!this.hitTestSource || !this.reticle) return;
 
         const hitTestResults = frame.getHitTestResults(this.hitTestSource);
 
@@ -625,12 +561,8 @@ class ARObjectPlacement {
 
             if (hitPose) {
                 this.reticle.visible = true;
-                this.reticle.position.set(
-                    hitPose.transform.position.x,
-                    hitPose.transform.position.y,
-                    hitPose.transform.position.z
-                );
-                this.reticle.updateMatrixWorld(true);
+                // UPDATE: Menggunakan matriks langsung untuk posisi & rotasi yang lebih akurat
+                this.reticle.matrix.fromArray(hitPose.transform.matrix);
             } else {
                 this.reticle.visible = false;
             }
@@ -642,42 +574,28 @@ class ARObjectPlacement {
     onSelect(event) {
         const timeSinceLastUI = Date.now() - this.lastUIInteraction;
         
-        if (this.isInteractingWithUI || timeSinceLastUI < 500) {
-            console.log('Ignoring select: UI interaction in progress or too recent');
-            return;
-        }
-
-        if (this.fpvMode) {
-            return;
-        }
+        if (this.isInteractingWithUI || timeSinceLastUI < 500) return;
+        if (this.fpvMode) return;
 
         const frame = event.frame;
         const inputSource = event.inputSource;
         
+        // Raycast logic untuk select object
         if (inputSource && frame) {
             const pose = frame.getPose(inputSource.targetRaySpace, this.referenceSpace);
             
             if (pose) {
-                const origin = new THREE.Vector3(
-                    pose.transform.position.x,
-                    pose.transform.position.y,
-                    pose.transform.position.z
-                );
+                const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+                const origin = new THREE.Vector3().setFromMatrixPosition(matrix);
+                const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(matrix));
                 
-                const direction = new THREE.Vector3(0, 0, -1);
-                direction.applyQuaternion(new THREE.Quaternion(
-                    pose.transform.orientation.x,
-                    pose.transform.orientation.y,
-                    pose.transform.orientation.z,
-                    pose.transform.orientation.w
-                ));
-                
-                this.raycaster.set(origin, direction);
+                this.raycaster.set(origin, direction.normalize());
                 
                 const intersects = this.raycaster.intersectObjects(this.placedObjects, true);
                 
                 if (intersects.length > 0) {
                     let selectedObj = intersects[0].object;
+                    // Traverse ke atas sampai ketemu root object yang kita place
                     while (selectedObj.parent && !this.placedObjects.includes(selectedObj)) {
                         selectedObj = selectedObj.parent;
                     }
@@ -691,24 +609,26 @@ class ARObjectPlacement {
             }
         }
         
+        // Logic place object
         if (this.reticle.visible && this.arObject) {
             this.placeObject();
         }
     }
 
     placeObject() {
-        const clone = this.arObject.clone(); // Clone the scene
+        const clone = this.arObject.clone();
         
-        // Calculate bounding box for the clone
         const box = new THREE.Box3().setFromObject(clone);
         const center = new THREE.Vector3();
         box.getCenter(center);
         
-        clone.position.copy(this.reticle.position);
-        clone.position.sub(center); // Subtract the center to shift the origin
+        // Posisikan berdasarkan reticle matrix
+        clone.position.setFromMatrixPosition(this.reticle.matrix);
         
-        clone.rotation.y = 0;
-        // Gunakan skala dari objek asli (penting untuk FBX yang sudah di-resize saat load)
+        // Rotasi sesuai reticle
+        clone.rotation.setFromRotationMatrix(this.reticle.matrix);
+        
+        // Skala
         clone.scale.copy(this.arObject.scale);
         
         clone.userData.objectId = this.objectIndex++;
@@ -718,22 +638,19 @@ class ARObjectPlacement {
         
         this.selectObject(clone);
         
-        console.log('Object placed. Total objects:', this.placedObjects.length);
+        console.log('Object placed');
     }
 
     selectObject(object) {
         this.selectedObject = object;
-        
         this.updateHighlightBox();
-        
-        const manipulationControls = document.getElementById('controls-manipulation');
-        manipulationControls.style.display = 'flex';
+        const el = document.getElementById('controls-manipulation');
+        if(el) el.style.display = 'flex';
 
         document.getElementById('selectedObjectId').textContent = '#' + this.selectedObject.userData.objectId;
         document.getElementById('scaleSlider').value = this.selectedObject.scale.x;
+        // Konversi radian ke derajat untuk UI
         document.getElementById('rotateSlider').value = (this.selectedObject.rotation.y * 180 / Math.PI) % 360;
-        
-        console.log('Object selected:', this.selectedObject.userData.objectId);
     }
 
     updateHighlightBox() {
@@ -753,30 +670,21 @@ class ARObjectPlacement {
 
     deselectObject() {
         this.selectedObject = null;
-        this.highlightBox.visible = false;
+        if(this.highlightBox) this.highlightBox.visible = false;
         
         const manipulationControls = document.getElementById('controls-manipulation');
-        manipulationControls.style.display = 'none';
-        
-        console.log('Object deselected');
+        if(manipulationControls) manipulationControls.style.display = 'none';
     }
 
     deleteSelectedObject() {
-        if (!this.selectedObject) {
-            console.log('No object selected to delete');
-            return;
-        }
+        if (!this.selectedObject) return;
 
-        const objectId = this.selectedObject.userData.objectId;
-        
         this.scene.remove(this.selectedObject);
         
         const index = this.placedObjects.indexOf(this.selectedObject);
         if (index > -1) {
             this.placedObjects.splice(index, 1);
         }
-        
-        console.log('Object deleted:', objectId, 'Remaining objects:', this.placedObjects.length);
         
         this.deselectObject();
     }
@@ -809,12 +717,10 @@ class ARObjectPlacement {
 
         // Hide AR UI and show FPV controls
         this.reticle.visible = false;
-        this.highlightBox.visible = false;
+        if(this.highlightBox) this.highlightBox.visible = false;
         document.getElementById('controls').style.display = 'none';
         document.getElementById('instructions').style.display = 'none';
         document.getElementById('fpvControls').style.display = 'flex';
-
-        console.log('FPV mode activated. Scale:', targetScale, 'Position:', this.fpvObject.position);
     }
 
     exitFPVMode() {
@@ -848,10 +754,9 @@ class ARObjectPlacement {
         document.getElementById('fpvControls').style.display = 'none';
 
         this.fpvObject = null;
-
-        console.log('FPV mode deactivated');
     }
     
+    // --- FULL COLLISION LOGIC ---
     checkFPVCollisions(movementVector) {
         const finalMovement = movementVector.clone();
         if (!this.fpvObject || finalMovement.lengthSq() === 0) {
@@ -871,8 +776,9 @@ class ARObjectPlacement {
 
         // Player position (camera) at world origin
         const playerPos = new THREE.Vector3(0, 0, 0);
-        const playerRadius = 0.5; // Slightly larger radius for better collision detection
-        const playerHeight = 1.8; // Height for vertical collision
+        // Parameter tabrakan
+        const playerRadius = this.playerRadius; 
+        const playerHeight = this.playerHeight;
 
         let adjustedMovement = finalMovement.clone();
 
