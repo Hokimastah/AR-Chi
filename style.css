@@ -1,0 +1,365 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: #000;
+    overflow: hidden;
+}
+
+#container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#ui {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    color: white;
+    text-align: center;
+    background: rgba(0,0,0,0.8);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#startButton {
+    padding: 15px 30px;
+    font-size: 18px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+#startButton:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+}
+
+#startButton:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#status {
+    margin: 15px 0;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+#instructions {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 120px;
+    background: rgba(0,123,255,0.9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    text-align: center;
+    z-index: 1000;
+    display: none;
+    max-width: calc(100% - 140px);
+}
+
+#controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: none;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 10px;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+}
+
+#controls-main {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+#controls-manipulation {
+    display: none;
+    flex-direction: column;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.3);
+    width: 100%;
+}
+
+.control-button {
+    padding: 12px 20px;
+    font-size: 16px;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.control-button:hover {
+    background: rgba(255,255,255,1);
+}
+
+.control-button.delete {
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+}
+
+.control-button.delete:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+.control-button.fpv {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+}
+
+.control-button.fpv:hover {
+    background: rgba(40, 167, 69, 1);
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    color: white;
+    font-size: 14px;
+}
+
+.slider-container label {
+    margin-right: 10px;
+    width: 60px;
+    text-align: right;
+}
+
+.slider-container input[type="range"] {
+    width: 150px;
+    -webkit-appearance: none;
+    height: 8px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+    border-radius: 5px;
+}
+
+.slider-container input[type="range"]:hover {
+    opacity: 1;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+}
+
+.slider-container input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+}
+
+#objectInfo {
+    color: white;
+    font-size: 14px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#manipulation-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+/* FPV Controls */
+#fpvControls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+}
+
+#fpvInfo {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    text-align: center;
+}
+
+#movementControls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0,0,0,0.7);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+#dpadContainer {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(3, 60px);
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.dpad-button {
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 8px;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.dpad-button:active {
+    background: rgba(100,200,100,0.9);
+}
+
+.dpad-button.empty {
+    background: transparent;
+    box-shadow: none;
+}
+
+#fpvExitButton {
+    padding: 12px 20px;
+    font-size: 16px;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    margin-bottom: 10px;
+}
+
+#fpvExitButton:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+#exitButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    padding: 12px 20px;
+    font-size: 16px;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+#exitButton:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+#heightControls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.height-button {
+    padding: 10px 20px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.height-button:active {
+    background: rgba(100,200,100,0.9);
+}
+
+#speedControl {
+    margin-top: 10px;
+    color: white;
+    font-size: 12px;
+}
+
+.model-selector {
+    margin: 10px 0;
+    color: white;
+    font-size: 14px;
+}
+
+.model-selector select {
+    padding: 8px 12px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.9);
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.model-selector select:focus {
+    outline: 2px solid #007bff;
+}
+
+canvas {
+    display: block;
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

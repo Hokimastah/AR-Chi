@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>AR Object Placement - FBX Support</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <div id="ui">
+            <h1>AR Object Placement - FPV Mode</h1>
+            <div id="status">
+                <span class="loading"></span>
+                Memeriksa dukungan WebXR...
+            </div>
+            <button id="startButton" disabled>Memuat...</button>
+        </div>
+        
+        <div id="instructions">
+            Arahkan kamera ke permukaan datar, lalu ketuk layar untuk menempatkan objek.<br>
+            Ketuk objek untuk memilih dan memanipulasi.
+        </div>
+
+        <button id="exitButton" style="display: none;">Keluar AR</button>
+
+        <div id="controls">
+            <div id="controls-main">
+                <div class="model-selector">
+                    <label for="modelSelect">Pilih Model:</label>
+                    <select id="modelSelect">
+                        <option value="tower_house_design.glb">Tower House</option>
+                        <option value="interior-fix2.glb">Kitchen</option>
+                        <option value="Astronaut.glb">Astronaut</option>
+                        <option value="3_bedroom_house.glb">3 Bedroom House</option>
+                    </select>
+                </div>
+
+                <div class="model-selector" style="margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 5px;">
+                    <label for="fileUpload">Upload FBX:</label>
+                    <input type="file" id="fileUpload" accept=".fbx" style="color: white; max-width: 200px;">
+                </div>
+
+                <button class="control-button" id="resetButton">Reset Semua</button>
+            </div>
+            <div id="controls-manipulation">
+                <div id="objectInfo">Objek dipilih: <span id="selectedObjectId">-</span></div>
+                <div class="slider-container">
+                    <label for="scaleSlider">Skala:</label>
+                    <input type="range" id="scaleSlider" min="0.01" max="5" value="1" step="0.01">
+                </div>
+                <div class="slider-container">
+                    <label for="rotateSlider">Rotasi Y:</label>
+                    <input type="range" id="rotateSlider" min="0" max="360" value="0" step="5">
+                </div>
+                <div id="manipulation-buttons">
+                    <button class="control-button fpv" id="fpvButton">🚶 Mode FPV</button>
+                    <button class="control-button delete" id="deleteButton">Hapus Objek</button>
+                    <button class="control-button" id="deselectButton">Batal Pilih</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fpvControls">
+            <button id="fpvExitButton">Keluar Mode FPV</button>
+            <div id="fpvInfo">
+                Mode First-Person View 🏠<br>
+                <small>Jelajahi model dalam skala 1:1</small>
+            </div>
+            <div id="movementControls">
+                <div id="dpadContainer">
+                    <div class="dpad-button empty"></div>
+                    <div class="dpad-button" id="forwardButton">▲</div>
+                    <div class="dpad-button empty"></div>
+                    <div class="dpad-button" id="leftButton">◀</div>
+                    <div class="dpad-button empty"></div>
+                    <div class="dpad-button" id="rightButton">▶</div>
+                    <div class="dpad-button empty"></div>
+                    <div class="dpad-button" id="backwardButton">▼</div>
+                    <div class="dpad-button empty"></div>
+                </div>
+                <div id="heightControls">
+                    <button class="height-button" id="moveUpButton">Naik ⬆</button>
+                    <button class="height-button" id="moveDownButton">Turun ⬇</button>
+                </div>
+                <div id="speedControl">
+                    <label for="speedSlider">Kecepatan: </label>
+                    <input type="range" id="speedSlider" min="0.5" max="3" value="1" step="0.5">
+                    <span id="speedValue">1x</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/libs/fflate.min.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/FBXLoader.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
